@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Task Planner</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple animation for the loader */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        /* Custom scrollbar for a polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Styles for the timeline view */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            overflow-x: auto;
+        }
+        .timeline-header {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+        }
+        .timeline-bar {
+            background-color: #4f46e5;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: absolute;
+            height: 28px;
+            display: flex;
+            align-items: center;
+        }
+        .timeline-bar:hover {
+            z-index: 10;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.2s ease-in-out;
+        }
+        .timeline-row {
+            height: 40px;
+            position: relative;
+        }
+        .grid-line {
+            border-right: 1px dashed #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-5xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900">Smart Task Planner</h1>
+            <p class="text-slate-600 mt-2">Enter your goal, and let AI create an actionable roadmap for you.</p>
+        </header>
+        
+        <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200">
+            <form id="goal-form" class="space-y-6">
+                <div>
+                    <label for="goal" class="block text-sm font-medium text-slate-700 mb-1">Your Goal</label>
+                    <textarea id="goal" name="goal" rows="3" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="e.g., Launch a new productivity app" required></textarea>
+                </div>
+                <div>
+                    <label for="timeframe" class="block text-sm font-medium text-slate-700 mb-1">Timeframe</label>
+                    <input type="text" id="timeframe" name="timeframe" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="e.g., 3 months" required>
+                </div>
+                <button type="submit" id="submit-button" class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wand-sparkles"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2 18.12V22h3.88l14.76-14.76a1.21 1.21 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
+                    <span>Generate Plan</span>
+                </button>
+            </form>
+            
+
+            <div id="results" class="mt-10">
+                <div id="loader" class="hidden text-center py-6">
+                    <div class="loader mx-auto"></div>
+                    <p class="text-slate-600 mt-3 font-medium">AI is thinking... please wait.</p>
+                </div>
+                <div id="error-message" class="hidden bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg"></div>
+                
+                <!-- This is the main container for the plan output, initially hidden -->
+                <div id="output-container" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b pb-2">
+                        <div class="flex items-center gap-2 mb-2 sm:mb-0" id="view-toggle">
+                            <button id="list-view-btn" class="px-3 py-1 text-sm font-medium rounded-md bg-indigo-100 text-indigo-700">List View</button>
+                            <button id="timeline-view-btn" class="px-3 py-1 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-100">Timeline View</button>
+                        </div>
+                        <button id="copy-button" class="flex items-center gap-2 px-3 py-1 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            <span>Copy Plan</span>
+                        </button>
+                    </div>
+
+                    <div id="plan-container">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-900">Your Action Plan</h2>
+                        <div id="plan-list" class="space-y-4"></div>
+                    </div>
+                    <div id="timeline-container" class="hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-900">Project Timeline</h2>
+                        <div id="timeline-chart" class="bg-slate-50 p-4 rounded-lg border border-slate-200"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8 text-slate-500 text-sm">
+            <p>Powered by FastAPI & Google Gemini</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('goal-form');
+        const submitButton = document.getElementById('submit-button');
+        const submitButtonText = submitButton.querySelector('span');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const outputContainer = document.getElementById('output-container');
+        const planContainer = document.getElementById('plan-container');
+        const timelineContainer = document.getElementById('timeline-container');
+        const planList = document.getElementById('plan-list');
+        const timelineChart = document.getElementById('timeline-chart');
+        const listViewBtn = document.getElementById('list-view-btn');
+        const timelineViewBtn = document.getElementById('timeline-view-btn');
+        const copyButton = document.getElementById('copy-button');
+        
+        let currentPlan = []; // Store the current plan for reuse (e.g., copying)
+
+        const API_URL = 'http://127.0.0.1:8000/generate-plan';
+        const COOLDOWN_SECONDS = 30;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.classList.add('hidden');
+            outputContainer.classList.add('hidden');
+            planList.innerHTML = '';
+            timelineChart.innerHTML = '';
+            loader.classList.remove('hidden');
+            submitButton.disabled = true;
+
+            const formData = new FormData(form);
+            const goal = formData.get('goal');
+            const timeframe = formData.get('timeframe');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ goal, timeframe }),
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
+                currentPlan = data.plan; // Save the plan
+                displayPlan(currentPlan);
+            } catch (error) {
+                console.error('Error generating plan:', error);
+                const errorText = error.message.toLowerCase().includes('quota') 
+                    ? 'You are making requests too quickly. Please wait for the cooldown to finish.' 
+                    : `An error occurred: ${error.message}`;
+                errorMessage.textContent = errorText;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+                startCooldown(COOLDOWN_SECONDS);
+            }
+        });
+
+        listViewBtn.addEventListener('click', () => {
+            timelineContainer.classList.add('hidden');
+            planContainer.classList.remove('hidden');
+            listViewBtn.classList.replace('text-slate-600', 'text-indigo-700');
+            listViewBtn.classList.replace('hover:bg-slate-100', 'bg-indigo-100');
+            timelineViewBtn.classList.replace('text-indigo-700', 'text-slate-600');
+            timelineViewBtn.classList.replace('bg-indigo-100', 'hover:bg-slate-100');
+        });
+
+        timelineViewBtn.addEventListener('click', () => {
+            planContainer.classList.add('hidden');
+            timelineContainer.classList.remove('hidden');
+            timelineViewBtn.classList.replace('text-slate-600', 'text-indigo-700');
+            timelineViewBtn.classList.replace('hover:bg-slate-100', 'bg-indigo-100');
+            listViewBtn.classList.replace('text-indigo-700', 'text-slate-600');
+            listViewBtn.classList.replace('bg-indigo-100', 'hover:bg-slate-100');
+        });
+        
+        copyButton.addEventListener('click', () => {
+            let planText = `Goal: ${document.getElementById('goal').value}\nTimeframe: ${document.getElementById('timeframe').value}\n\n--- Action Plan ---\n\n`;
+            currentPlan.forEach(task => {
+                planText += `#${task.id}: ${task.task}\n`;
+                planText += `Description: ${task.description}\n`;
+                planText += `Deadline: ${task.deadline}\n`;
+                planText += `Dependencies: ${task.dependencies.length > 0 ? task.dependencies.join(', ') : 'None'}\n\n`;
+            });
+
+            // Use a temporary textarea to copy text to preserve formatting
+            const textArea = document.createElement("textarea");
+            textArea.value = planText;
+            textArea.style.position = "fixed"; // Avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                const copyButtonText = copyButton.querySelector('span');
+                copyButtonText.textContent = 'Copied!';
+                setTimeout(() => { copyButtonText.textContent = 'Copy Plan'; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+            document.body.removeChild(textArea);
+        });
+
+        function displayPlan(plan) {
+            if (!plan || plan.length === 0) {
+                errorMessage.textContent = 'The AI returned an empty plan. Please try again with a more specific goal.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+            // Populate both views
+            displayListView(plan);
+            displayTimelineView(plan);
+            // Show the output container
+            outputContainer.classList.remove('hidden');
+        }
+
+        function displayListView(plan) {
+            planList.innerHTML = ''; // Clear previous list
+            plan.forEach(task => {
+                const taskCard = document.createElement('div');
+                taskCard.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200 transition hover:shadow-md hover:border-indigo-200';
+                const dependencyBadges = task.dependencies.length > 0 ? task.dependencies.map(depId => 
+                    `<span class="bg-slate-200 text-slate-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">#${depId}</span>`
+                ).join('') : `<span class="text-slate-500">None</span>`;
+                taskCard.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start">
+                        <div class="flex-grow">
+                            <p class="font-bold text-slate-900"><span class="text-indigo-600">#${task.id}</span> ${task.task}</p>
+                            <p class="text-slate-600 text-sm mt-1">${task.description}</p>
+                        </div>
+                        <div class="text-left sm:text-right ml-0 sm:ml-4 mt-2 sm:mt-0 flex-shrink-0">
+                            <p class="text-xs text-slate-500">Deadline</p>
+                            <p class="font-semibold text-slate-800">${task.deadline}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-sm"><strong class="font-medium">Depends on:</strong> ${dependencyBadges}</div>
+                `;
+                planList.appendChild(taskCard);
+            });
+        }
+
+        function displayTimelineView(plan) {
+            timelineChart.innerHTML = ''; // Clear previous chart
+
+            // Helper to parse dates
+            const parseDate = (str) => new Date(str + 'T00:00:00'); // Assume UTC to avoid timezone issues
+            const dayDiff = (date1, date2) => Math.round((date2 - date1) / (1000 * 60 * 60 * 24));
+
+            const dates = plan.map(t => parseDate(t.deadline));
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+            const projectStartDate = new Date(minDate);
+            projectStartDate.setDate(projectStartDate.getDate() - 7); // Add some padding
+            
+            const totalDays = dayDiff(projectStartDate, maxDate) + 1;
+            
+            // Create timeline grid
+            let taskRows = '';
+            let timelineBars = '';
+
+            plan.forEach(task => {
+                const deadlineDate = parseDate(task.deadline);
+                let startDate = projectStartDate;
+
+                if (task.dependencies.length > 0) {
+                    const depDates = task.dependencies.map(depId => {
+                        const depTask = plan.find(t => t.id === depId);
+                        return depTask ? parseDate(depTask.deadline) : projectStartDate;
+                    });
+                    startDate = new Date(Math.max(...depDates));
+                }
+                
+                const startOffsetDays = dayDiff(projectStartDate, startDate);
+                const durationDays = dayDiff(startDate, deadlineDate);
+
+                const left = (startOffsetDays / totalDays) * 100;
+                const width = (Math.max(durationDays, 1) / totalDays) * 100; // Min 1 day width
+
+                taskRows += `<div class="font-medium text-sm text-slate-700 truncate pr-2 py-2 border-b border-slate-200">${task.id}. ${task.task}</div>`;
+                timelineBars += `<div class="timeline-row border-b border-slate-200">
+                    <div class="timeline-bar" style="left: ${left}%; width: ${width}%;" title="${task.task} | Start: ${startDate.toISOString().split('T')[0]} | Deadline: ${task.deadline}">
+                       ${task.task}
+                    </div>
+                </div>`;
+            });
+            
+            // Create header with month markers
+            let headerMarkers = '';
+            let gridLines = '';
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            let currentDate = new Date(projectStartDate);
+            while(currentDate <= maxDate) {
+                 const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                 const offset = (dayDiff(projectStartDate, startOfMonth) / totalDays) * 100;
+                 if (offset >= 0 && offset <= 100) {
+                    headerMarkers += `<div class="absolute text-xs font-semibold text-slate-500" style="left: ${offset}%">${months[startOfMonth.getMonth()]} '${startOfMonth.getFullYear().toString().slice(-2)}</div>`;
+                    gridLines += `<div class="absolute h-full grid-line" style="left: ${offset}%"></div>`;
+                 }
+                 currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+
+            timelineChart.innerHTML = `
+                <div class="timeline-header">
+                    <div class="p-2 border-b-2 border-slate-300"></div>
+                    <div class="relative p-2 border-b-2 border-slate-300 h-8">${headerMarkers}</div>
+                </div>
+                <div class="timeline-grid">
+                    <div class="border-r border-slate-300">${taskRows}</div>
+                    <div class="relative">${gridLines}${timelineBars}</div>
+                </div>
+            `;
+        }
+        
+        function startCooldown(seconds) {
+            let remaining = seconds;
+            submitButton.disabled = true;
+            const intervalId = setInterval(() => {
+                submitButtonText.textContent = `Please wait ${remaining}s`;
+                remaining--;
+                if (remaining < 0) {
+                    clearInterval(intervalId);
+                    submitButton.disabled = false;
+                    submitButtonText.textContent = 'Generate Plan';
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
+
