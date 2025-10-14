@@ -163,9 +163,3 @@ https://github.com/user-attachments/assets/03ea74f6-44ac-43e6-b80d-f35d998de13d
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome! Check the [issues](https://github.com/your-username/smart-task-planner/issues) page to get started.
-
----
-
-If you want, I can **also add a clickable Table of Contents** at the top and badges for Python version, license, and GitHub stars to make it look even more professional.
-
-Do you want me to do that next?
